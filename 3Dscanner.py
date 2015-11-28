@@ -23,6 +23,10 @@ img = Image.open("test1.jpg")
 ImgWidth = img.size[0]
 ImgHeight = img.size[1]
 
+#Calculates the amount of length units per pixel.
+physicalImgHeight = 150 #in blender units, found by inspection.
+unitsPerPixel = float(physicalImgHeight) / ImgHeight
+
 #Data structure that holds all of the pixel
 #values of every image
 pointCloud = []
@@ -42,6 +46,11 @@ faces = []
 ################################################################################
 #                                   Functions                                  #
 ################################################################################
+#The mm to blender unit ratio is 2:1
+#Dividing the physical distance by 2 yields the unknown blender unit distance.
+#See documentation for the math on how this is done.
+def convertToBlenderUnits(physicalDistance):
+    return float(physicalDistance) / 2
 
 #cloudInit() initializes the point cloud,
 #pointCloud[] holds all the scanned values
@@ -176,8 +185,10 @@ def objectMaker():
             r = L3 - rPrime
             x = r * cos(rotateAngle)
             y = r * sin(rotateAngle)
-            z = height
-            vertStripe.append([x, y, z])
+            x = convertToBlenderUnits(x)
+            y = convertToBlenderUnits(y)
+            z = height * unitsPerPixel
+            vertStripe.append([x, y, z]) #x, y, and z values are now in Blender units.
         finalObject[rotateAngle] = vertStripe
 
 def arcsin(n):
