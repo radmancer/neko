@@ -1,5 +1,5 @@
 from PIL import Image
-step = 5
+step = 10
 
 def imageCopier(img):
         img.save(temp)
