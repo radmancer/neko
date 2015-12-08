@@ -16,14 +16,24 @@ import os.path
 ################################################################################
 
 #Resolution adjustment
-vertStep = 36 #Number of vertical pixels to step by
-step = 10  #Degrees to step by
-#zUnit = 36 #ImgHeight / zUnit should be a whole number.
+vertStep = 0 #Number of vertical pixels to step by
+verticalLayers = 0
 
 #Image object and data
 input_directory = os.path.dirname(os.path.abspath(__file__)) + "/images/input/"
 output_directory = os.path.dirname(os.path.abspath(__file__)) + "/images/output/"
 script_directory = os.path.dirname(os.path.abspath(__file__)) + "/scripts/blender/"
+
+#Finds out how many images are in the input folder.
+inputFileCount = 0
+for file in os.listdir(input_directory):
+    if file.endswith(".png"):
+        inputFileCount += 1
+
+step = 360 / inputFileCount #degrees to step by
+if(360 % inputFileCount != 0):
+    print "ERROR: incorrect number of files found in /images/input"
+    exit()
 
 img = Image.open(input_directory + "1.png")
 ImgWidth = img.size[0]
@@ -134,7 +144,8 @@ def cloudInit(rotateAngle):
                 vertStripe2.append((x, y))
                 break
     pointCloud[rotateAngle] = vertStripe2
-    print len(vertStripe2)
+    print "done"
+    #print len(vertStripe2)
 
 #firstNode() seeks out the critical node,
 #The critical node is essential
@@ -319,6 +330,21 @@ def facesInit():
 ################################################################################
 #                                   Main                                       #
 ################################################################################
+while(True):
+    verticalLayers = int(raw_input("Number of vertical layers: "))
+    if(ImgHeight % verticalLayers != 0):
+        print "An image height of " + str(ImgHeight) + "px cannot be divided evenly by " + str(verticalLayers) + " vertical layers!"
+    else:
+        vertStep = ImgHeight / verticalLayers
+        break
+
+while(True):
+    tempStep = int(raw_input("Number of horizontal divisions: "))
+    if(tempStep % step != 0):
+        print str(tempStep) + " degrees cannot be divided evenly by " + str(step) + " degrees, which is the absolute maximum resolution for horizontal divisions."
+    else:
+        step = tempStep
+        break
 
 #Main loop, traverses through all captured images
 for rotateAngle in range(0, 360, step):
@@ -328,5 +354,4 @@ objectMaker()
 coordsInit()
 facesInit()
 writeToFile()
-print "done"
-    
+print "All images have been processed."
