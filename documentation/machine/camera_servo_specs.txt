@@ -1,0 +1,13 @@
+#A frame at 33 miliseconds is equivalent to 4.62 degrees.
+#This is the highest possible degree resolution for a continuous
+#servo that rotates at 2.60 seconds and the pi camera's 30fps.
+ffmpeg -i video.h264 -ss 00:00:00.033 -vframes 1 out2.png
+
+import os
+subprocess.call(['ffmpeg', '-i', 'video.h264', '-ss', '00:00:00.033', '-vframes', '1', 'test.png'])
+
+#open images with fbi.
+sudo fbi -T 2 test.png
+
+#open videos with omxplayer
+omxplayer test.h264
