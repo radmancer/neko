@@ -10,8 +10,11 @@ for file in os.listdir(image_directory):
 		os.remove(image_directory + file)
 
 frame_time = 0.000
+degree_count = 0.000
 
 for i in range(1, int(global_rig_variables.frames_per_full_rotation) + 1):
+	file_name = str(degree_count).replace(".","_")
 	subprocess.call(['ffmpeg', '-loglevel', 'panic', '-i', 'input/video/scan.h264', '-ss', 
-        	         '00:00:0'+str(frame_time), '-vframes', '1', 'input/images/'+str(i)+'.png'])
+        	         '00:00:0'+str(frame_time), '-vframes', '1', 'input/images/'+str(file_name)+'.png'])
 	frame_time += global_rig_variables.seconds_per_degrees_between_frames
+	degree_count += global_rig_variables.degrees_between_frames

@@ -10,32 +10,23 @@ from PIL import Image
 import ImageDraw
 import math
 import os.path
+import global_rig_variables
 
 ################################################################################
 #                               Global Variables                               #
 ################################################################################
-
 #Resolution adjustment
 vertStep = 0 #Number of vertical pixels to step by
 verticalLayers = 0
 
 #Image object and data
-input_directory = os.path.dirname(os.path.abspath(__file__)) + "/input/"
+input_directory = os.path.dirname(os.path.abspath(__file__)) + "/input/images/"
 stage_directory = os.path.dirname(os.path.abspath(__file__)) + "/stage/"
 script_directory = os.path.dirname(os.path.abspath(__file__)) + "/output/blender/"
 
-#Finds out how many images are in the input folder.
-inputFileCount = 0
-for file in os.listdir(input_directory):
-    if file.endswith(".png"):
-        inputFileCount += 1
-
-step = 360 / inputFileCount #degrees to step by
-if(360 % inputFileCount != 0):
-    print "ERROR: incorrect number of files found in /input"
-    exit()
-
-img = Image.open(input_directory + "1.png")
+firstImgName = os.listdir(input_directory)[1]
+step = global_rig_variables.degrees_between_frames
+img = Image.open(input_directory + firstImgName)
 ImgWidth = img.size[0]
 ImgHeight = img.size[1]
 
@@ -43,21 +34,28 @@ ImgHeight = img.size[1]
 physicalImgHeight = 150 #in blender units, found by inspection.
 unitsPerPixel = float(physicalImgHeight) / ImgHeight
 
+def frange(x, y, jump):
+  while x < y:
+    yield x
+    x += jump
+
 #Data structure that holds all of the pixel
 #values of every image
 pointCloud = []
-for i in range(360):
+for i in frange(0.000, global_rig_variables.frames_per_full_rotation, step):
     pointCloud.append(i)
 
 #Data structure that holds all of the
 #coordinates in a 3D object
 finalObject = []
-for i in range(360):
+for i in frange(0.000, global_rig_variables.frames_per_full_rotation, step):
     finalObject.append(i)
 
 #cordinates and faces
 coords = []
 faces = []
+
+rotate_angle_index = 0
 
 ################################################################################
 #                                   Functions                                  #
@@ -71,8 +69,9 @@ def convertToBlenderUnits(physicalDistance):
 #cloudInit() initializes the point cloud,
 #pointCloud[] holds all the scanned values
 def cloudInit(rotateAngle):
-    print "processing " + str(rotateAngle + 1) + ".png"
-    img = Image.open(input_directory + str(rotateAngle + 1) + ".png")
+    global rotate_angle_index
+    print "processing " + str(rotateAngle) + ".png"
+    img = Image.open(input_directory + str(rotateAngle) + ".png")
 
     #loaded image object
     pix = img.load()
@@ -127,8 +126,8 @@ def cloudInit(rotateAngle):
     #Saving the newly drawn image as a .png ensures
     #that the reading loops always get a color value
     #img2 is the modified image, used in the reading loops
-    img.save(stage_directory + str(rotateAngle + 1) + ".png")
-    img2 = Image.open(stage_directory + str(rotateAngle + 1) + ".png")
+    img.save(stage_directory + str(rotateAngle) + ".png")
+    img2 = Image.open(stage_directory + str(rotateAngle) + ".png")
 
     #loaded image object
     pix2 = img2.load()
@@ -143,9 +142,9 @@ def cloudInit(rotateAngle):
             if(pixelColor  == (0, 255, 0)):
                 vertStripe2.append((x, y))
                 break
-    pointCloud[rotateAngle] = vertStripe2
+    pointCloud[rotate_angle_index] = vertStripe2
     print "done"
-    #print len(vertStripe2)
+    rotate_angle_index += 1
 
 #firstNode() seeks out the critical node,
 #The critical node is essential
@@ -183,20 +182,23 @@ def firstNode():
 #given a set of measured distances
 #(see diagram 1 for all the math)
 def objectMaker():
+
+    rotate_angle_index = 0
+
     alpha = 46.8 #degrees
     L1 = 9.53 #cm
-    L2 = 25.4 #cm
+    L2 = 25.9 #cm
     L3 = 24.1 #cm
     A = 90 #degrees
     C = arcsin((L1 * sin(A))/L2)
     B = 180 - (A + C)
     thetaPrime = B - (alpha/2)
 
-    for rotateAngle in range(0, 360, step):
+    for rotateAngle in frange(0.00, global_rig_variables.frames_per_full_rotation, step):
         vertStripe = []
         
         for height in range(ImgHeight):
-		theta = pointCloud[rotateAngle][height][0] * (alpha/ImgWidth)
+		theta = pointCloud[rotate_angle_index][height][0] * (alpha/ImgWidth)
 		Bvirtual = thetaPrime + theta
 		rPrime = L1 * tan(Bvirtual)
 		r = L3 - rPrime
@@ -206,7 +208,9 @@ def objectMaker():
 		y = convertToBlenderUnits(y)
 		z = height * unitsPerPixel
 		vertStripe.append([x, y, z]) #x, y, and z values are now in Blender units.
-        finalObject[rotateAngle] = vertStripe
+        finalObject[rotate_angle_index] = vertStripe
+
+	rotate_angle_index += 1
 
 def arcsin(n):
     #converts n from degrees to radians
@@ -299,8 +303,10 @@ def writeToFile():
 #to be printed in blender
 def coordsInit():
     for height in range(0, ImgHeight, vertStep):
-        for rotateAngle in range(0, 360, step):
-            coords.append(finalObject[rotateAngle][height])
+        rotate_angle_index = 0
+        for rotateAngle in frange(0.000, global_rig_variables.frames_per_full_rotation, step):
+            coords.append(finalObject[rotate_angle_index][height])
+            rotate_angle_index += 1
 
 def facesInit():
     vertLimit = ImgHeight/vertStep
@@ -312,7 +318,7 @@ def facesInit():
     p4 = p1 + 1
 
     for i in range(vertLimit - 1):
-        for j in range(cap - 1):
+        for j in frange(0.00, cap - 1.00, 1.00):
             faces.append([p1, p2, p3, p4])
             if(j == cap - 2):
                 break
@@ -326,7 +332,7 @@ def facesInit():
         p2 = p2 + 2
         p3 = p3 + 2
         p4 = p4 + 2
-      
+
 ################################################################################
 #                                   Main                                       #
 ################################################################################
@@ -338,17 +344,10 @@ while(True):
         vertStep = ImgHeight / verticalLayers
         break
 
-while(True):
-    tempStep = int(raw_input("Number of horizontal divisions: "))
-    if(tempStep % step != 0):
-        print str(tempStep) + " degrees cannot be divided evenly by " + str(step) + " degrees, which is the absolute maximum resolution for horizontal divisions."
-    else:
-        step = tempStep
-        break
-
 #Main loop, traverses through all captured images
-for rotateAngle in range(0, 360, step):
-    cloudInit(rotateAngle)
+for rotateAngle in frange(0.0, global_rig_variables.frames_per_full_rotation, step):
+	rotate_angle_and_file_name = str(rotateAngle).replace(".", "_")
+	cloudInit(rotate_angle_and_file_name)
 
 objectMaker()
 coordsInit()
@@ -356,8 +355,8 @@ facesInit()
 writeToFile()
 
 #Deletes all images in the stage directory.
-for file in os.listdir(stage_directory):
-    if file.endswith(".png"):
-        os.remove(stage_directory + file)
+#for file in os.listdir(stage_directory):
+    #if file.endswith(".png"):
+        #os.remove(stage_directory + file)
 
 print "All images have been processed."
